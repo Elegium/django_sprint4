@@ -1,9 +1,5 @@
 {% load static %}
 <header>
-  {{request.user}}
-  {{request.user.id}}
-  {{request.user.is_authenticated}}
-  {{user.id}}
   <nav class="navbar navbar-light" style="background-color: lightskyblue">
     <div class="container">
       <a class="navbar-brand" href="{% url 'blog:index' %}">
