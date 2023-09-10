@@ -1,6 +1,12 @@
 from django.shortcuts import get_object_or_404, get_list_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import CreateView, ListView, DetailView, UpdateView, DeleteView
+from django.views.generic import (
+    CreateView,
+    ListView,
+    DetailView,
+    UpdateView,
+    DeleteView
+)
 from django.urls import reverse_lazy, reverse
 from .models import Post, Category, Comment
 from .forms import PostForm, UserForm, CommentForm
@@ -15,11 +21,18 @@ class CustomSettingsCommentMixin:
     model = Comment
 
     def dispatch(self, request, *args, **kwargs):
-        self.current_post = get_object_or_404(Post, id=kwargs['post_id'])
+        self.current_post = get_object_or_404(
+            Post,
+            id=kwargs['post_id']
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
-        return reverse('blog:post_detail', kwargs={'post_id': self.current_post.id})
+        return reverse(
+            'blog:post_detail', kwargs={
+                'post_id': self.current_post.id
+            }
+        )
 
 
 class PostListView(ListView):
@@ -43,9 +56,9 @@ class PostDetailView(DetailView):
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
-                'location'
-            )
-            , pk=self.kwargs['post_id']
+                'location',
+            ),
+            pk=self.kwargs['post_id']
         )
         return post
 
@@ -68,7 +81,11 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs={'username': self.request.user.username})
+        return reverse(
+            'blog:profile', kwargs={
+                'username': self.request.user.username
+            }
+        )
 
 
 class PostUpdateView(LoginRequiredMixin, UpdateView):
@@ -80,9 +97,9 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
-                'location'
-            )
-            , pk=self.kwargs['post_id']
+                'location',
+            ),
+            pk=self.kwargs['post_id']
         )
         return post
 
@@ -96,9 +113,9 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
-                'location'
-            )
-            , pk=self.kwargs['post_id']
+                'location',
+            ),
+            pk=self.kwargs['post_id']
         )
         return post
 
@@ -109,7 +126,11 @@ class CategoryListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        category = get_object_or_404(Category, slug=self.kwargs['category_slug'])
+        category = get_object_or_404(
+            Category, slug=self.kwargs[
+                'category_slug'
+            ]
+        )
         return get_list_or_404(
             object_filter(
                 category.posts.all().order_by(
@@ -120,7 +141,11 @@ class CategoryListView(ListView):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        category = get_object_or_404(Category, slug=self.kwargs['category_slug'])
+        category = get_object_or_404(
+            Category, slug=self.kwargs[
+                'category_slug'
+            ]
+        )
         context['category'] = category
         return context
 
@@ -131,7 +156,12 @@ class CategoryListView(ListView):
     #     activities = paginator.get_page(page)
     #     return activities Добавь в контекст
 
-class CommentCreateView(CustomSettingsCommentMixin, LoginRequiredMixin, CreateView):
+
+class CommentCreateView(
+    CustomSettingsCommentMixin,
+    LoginRequiredMixin,
+    CreateView
+):
     form_class = CommentForm
 
     def form_valid(self, form):
@@ -140,7 +170,11 @@ class CommentCreateView(CustomSettingsCommentMixin, LoginRequiredMixin, CreateVi
         return super().form_valid(form)
 
 
-class CommentUpdateView(CustomSettingsCommentMixin, LoginRequiredMixin, UpdateView):
+class CommentUpdateView(
+    CustomSettingsCommentMixin,
+    LoginRequiredMixin,
+    UpdateView
+):
     form_class = CommentForm
     template_name = 'blog/comment.html'
 
@@ -153,11 +187,16 @@ class CommentUpdateView(CustomSettingsCommentMixin, LoginRequiredMixin, UpdateVi
         return super().form_valid(form)
 
 
-class CommentDeleteView(CustomSettingsCommentMixin, LoginRequiredMixin, DeleteView):
+class CommentDeleteView(
+    CustomSettingsCommentMixin,
+    LoginRequiredMixin,
+    DeleteView
+):
     template_name = 'blog/comment.html'
 
     def get_object(self, queryset=None):
         return get_object_or_404(Comment, pk=self.kwargs.get('comment_id'))
+
 
 class ProfileDetailView(LoginRequiredMixin, ListView):
     model = Post
@@ -165,7 +204,11 @@ class ProfileDetailView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Post.objects.filter(author__username=self.kwargs.get('username')).select_related(
+        return Post.objects.filter(
+            author__username=self.kwargs.get(
+                'username'
+            )
+        ).select_related(
             'category',
             'location'
         ).order_by(
@@ -173,7 +216,11 @@ class ProfileDetailView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['profile'] = get_object_or_404(User, username=self.kwargs.get('username'))
+        context['profile'] = get_object_or_404(
+            User, username=self.kwargs.get(
+                'username'
+            )
+        )
         return context
 
 
@@ -184,7 +231,9 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'blog/user.html'
 
     def get_object(self, queryset=None):
-        self.user = get_object_or_404(User, username=self.request.user.username)
+        self.user = get_object_or_404(
+            User, username=self.request.user.username
+        )
         return self.user
 
     def get_success_url(self):

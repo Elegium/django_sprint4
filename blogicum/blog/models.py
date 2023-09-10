@@ -78,7 +78,6 @@ class Post(PublishedDatecreatedBaseModel):
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
 
-
     def get_absolute_url(self):
         return reverse('blog:post_detail', kwargs={'post_id': self.id})
 
@@ -89,9 +88,12 @@ class Post(PublishedDatecreatedBaseModel):
     def comment_count(self):
         return self.comments.count()
 
+
 class Comment(models.Model):
     text = models.TextField('Комментарий')
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    post = models.ForeignKey(Post,
+                             on_delete=models.CASCADE,
+                             related_name='comments')
     create_at = models.DateTimeField(auto_now_add=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
 
