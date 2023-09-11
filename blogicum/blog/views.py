@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, get_list_or_404
+from django.shortcuts import get_object_or_404, get_list_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
     CreateView,
@@ -12,6 +12,8 @@ from .models import Post, Category, Comment
 from .forms import PostForm, UserForm, CommentForm
 from django.contrib.auth import get_user_model
 from .utils import object_filter
+from django.core.paginator import Paginator
+
 
 User = get_user_model()
 
@@ -19,13 +21,6 @@ User = get_user_model()
 class CustomSettingsCommentMixin:
     current_post = None
     model = Comment
-
-    def dispatch(self, request, *args, **kwargs):
-        self.current_post = get_object_or_404(
-            Post,
-            id=kwargs['post_id']
-        )
-        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         return reverse(
@@ -57,6 +52,7 @@ class PostDetailView(DetailView):
             Post.objects.select_related(
                 'category',
                 'location',
+
             ),
             pk=self.kwargs['post_id']
         )
@@ -66,7 +62,7 @@ class PostDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
         context['comments'] = (
-            self.object.comments.select_related('author')
+            self.object.comments.select_related('author').order_by('create_at')
         )
         return context
 
@@ -93,6 +89,21 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
     form_class = PostForm
     template_name = 'blog/create.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(
+                'blog:post_detail', self.kwargs['post_id']
+
+            )
+        else:
+            get_object_or_404(
+                Post,
+                pk=self.kwargs['post_id'],
+                author=self.request.user,
+            )
+
+        return super().dispatch(request, *args, **kwargs)
+
     def get_object(self):
         post = get_object_or_404(
             Post.objects.select_related(
@@ -109,52 +120,59 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'blog/create.html'
     success_url = reverse_lazy('blog:index')
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.request.user.is_authenticated:
+            return redirect('blog:post_detail', self.kwargs['post_id'])
+        get_object_or_404(
+            Post,
+            pk=self.kwargs['post_id'],
+            author=request.user
+        )
+        return super().dispatch(request, *args, **kwargs)
+
     def get_object(self):
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
                 'location',
             ),
-            pk=self.kwargs['post_id']
+            pk=self.kwargs['post_id'],
+
         )
         return post
 
 
-class CategoryListView(ListView):
+class CategoryDetailView(DetailView):
     model = Category
     template_name = 'blog/category.html'
-    paginate_by = 10
 
-    def get_queryset(self):
+    def get_object(self):
         category = get_object_or_404(
-            Category, slug=self.kwargs[
+            Category.objects.filter(is_published=True), slug=self.kwargs[
                 'category_slug'
             ]
         )
-        return get_list_or_404(
+        return category
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        category = get_object_or_404(
+            Category.objects.filter(is_published=True), slug=self.kwargs[
+                'category_slug'
+            ]
+        )
+        queryset = get_list_or_404(
             object_filter(
                 category.posts.all().order_by(
                     '-pub_date'
                 )
             )
         )
-
-    def get_context_data(self, *, object_list=None, **kwargs):
-        context = super().get_context_data(**kwargs)
-        category = get_object_or_404(
-            Category, slug=self.kwargs[
-                'category_slug'
-            ]
-        )
-        context['category'] = category
+        paginator = Paginator(queryset, 10)
+        page = self.request.GET.get('page')
+        posts = paginator.get_page(page)
+        context['page_obj'] = posts
         return context
-
-    # def get_related_activities(self):
-    #     queryset = self.object.activity_rel.all()
-    #     paginator = Paginator(queryset, 5)  # paginate_by
-    #     page = self.request.GET.get('page')
-    #     activities = paginator.get_page(page)
-    #     return activities Добавь в контекст
 
 
 class CommentCreateView(
@@ -163,6 +181,17 @@ class CommentCreateView(
     CreateView
 ):
     form_class = CommentForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(
+                'blog:post_detail', self.kwargs['post_id']
+            )
+        self.current_post = get_object_or_404(
+            Post,
+            id=kwargs['post_id']
+        )
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -178,11 +207,24 @@ class CommentUpdateView(
     form_class = CommentForm
     template_name = 'blog/comment.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(
+                reverse('blog:post_detail', self.kwargs['post_id'])
+            )
+        self.current_post = get_object_or_404(
+            Post,
+            id=kwargs['post_id']
+        )
+        get_object_or_404(Comment,
+                          id=kwargs['comment_id'],
+                          author=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
     def get_object(self, queryset=None):
         return get_object_or_404(Comment, pk=self.kwargs.get('comment_id'))
 
     def form_valid(self, form):
-        form.instance.author = self.request.user
         form.instance.post = self.current_post
         return super().form_valid(form)
 
@@ -194,33 +236,51 @@ class CommentDeleteView(
 ):
     template_name = 'blog/comment.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(
+                'blog:post_detail', self.kwargs['post_id']
+
+            )
+        self.current_post = get_object_or_404(
+            Post,
+            id=kwargs['post_id']
+        )
+        get_object_or_404(Comment,
+                          id=kwargs['comment_id'],
+                          author=request.user)
+        return super().dispatch(request, *args, **kwargs)
+
     def get_object(self, queryset=None):
         return get_object_or_404(Comment, pk=self.kwargs.get('comment_id'))
 
 
-class ProfileDetailView(LoginRequiredMixin, ListView):
-    model = Post
+class ProfileDetailView(DetailView):
+    current_user = None
+    model = User
     template_name = 'blog/profile.html'
-    paginate_by = 10
 
-    def get_queryset(self):
-        return Post.objects.filter(
-            author__username=self.kwargs.get(
-                'username'
-            )
-        ).select_related(
-            'category',
-            'location'
-        ).order_by(
-            '-pub_date')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['profile'] = get_object_or_404(
+    def get_object(self):
+        self.current_user = get_object_or_404(
             User, username=self.kwargs.get(
                 'username'
             )
         )
+        return self.current_user
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        queryset = self.current_user.posts.all(
+
+        ).order_by(
+            '-pub_date'
+        )
+        paginator = Paginator(queryset, 10)
+        page = self.request.GET.get('page')
+        postss = paginator.get_page(page)
+        context['page_obj'] = postss
+        context['profile'] = self.current_user
         return context
 
 
