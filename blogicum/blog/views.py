@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, get_list_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
     CreateView,
@@ -13,7 +13,7 @@ from .forms import PostForm, UserForm, CommentForm
 from django.contrib.auth import get_user_model
 from .utils import object_filter
 from django.core.paginator import Paginator
-from django.core.exceptions import PermissionDenied
+
 
 User = get_user_model()
 
