@@ -13,7 +13,7 @@ from .forms import PostForm, UserForm, CommentForm
 from django.contrib.auth import get_user_model
 from .utils import object_filter
 from django.core.paginator import Paginator
-
+from django.core.exceptions import PermissionDenied
 
 User = get_user_model()
 
@@ -47,7 +47,7 @@ class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
@@ -90,18 +90,15 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
     template_name = 'blog/create.html'
 
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect(
-                'blog:post_detail', self.kwargs['post_id']
 
-            )
-        else:
-            get_object_or_404(
-                Post,
-                pk=self.kwargs['post_id'],
-                author=self.request.user,
-            )
-
+        if not self.request.user.is_authenticated:
+            print('YESYES')
+            return redirect('blog:post_detail', self.kwargs['post_id'])
+        get_object_or_404(
+            Post,
+            pk=self.kwargs['post_id'],
+            author=request.user
+        )
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self):
@@ -143,35 +140,33 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
 
 
 class CategoryDetailView(DetailView):
+    current_category = None
     model = Category
     template_name = 'blog/category.html'
 
     def get_object(self):
-        category = get_object_or_404(
-            Category.objects.filter(is_published=True), slug=self.kwargs[
+        self.current_category = get_object_or_404(
+            Category.objects.filter(
+                is_published=True
+            ), slug=self.kwargs[
                 'category_slug'
             ]
         )
-        return category
+
+        return self.current_category
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        category = get_object_or_404(
-            Category.objects.filter(is_published=True), slug=self.kwargs[
-                'category_slug'
-            ]
-        )
-        queryset = get_list_or_404(
-            object_filter(
-                category.posts.all().order_by(
-                    '-pub_date'
-                )
+        queryset = object_filter(
+            self.current_category.posts.all().order_by(
+                '-pub_date'
             )
         )
         paginator = Paginator(queryset, 10)
         page = self.request.GET.get('page')
-        posts = paginator.get_page(page)
-        context['page_obj'] = posts
+        page_obj = paginator.get_page(page)
+        context['category'] = self.current_category
+        context['page_obj'] = page_obj
         return context
 
 
@@ -210,7 +205,7 @@ class CommentUpdateView(
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(
-                reverse('blog:post_detail', self.kwargs['post_id'])
+                'blog:post_detail', self.kwargs['post_id']
             )
         self.current_post = get_object_or_404(
             Post,
