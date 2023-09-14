@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, Http404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import (
     CreateView,
@@ -88,28 +88,41 @@ class PostUpdateView(LoginRequiredMixin, UpdateView):
     model = Post
     form_class = PostForm
     template_name = 'blog/create.html'
+    pk_url_kwarg = 'post_id'
 
     def dispatch(self, request, *args, **kwargs):
-
-        if not self.request.user.is_authenticated:
-            print('YESYES')
-            return redirect('blog:post_detail', self.kwargs['post_id'])
-        get_object_or_404(
-            Post,
-            pk=self.kwargs['post_id'],
-            author=request.user
-        )
+        if not request.user.is_authenticated:
+            return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
         return super().dispatch(request, *args, **kwargs)
 
-    def get_object(self):
-        post = get_object_or_404(
-            Post.objects.select_related(
-                'category',
-                'location',
-            ),
-            pk=self.kwargs['post_id']
-        )
-        return post
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.author != self.request.user:
+            raise Http404
+        return super().post(request, *args, **kwargs)
+
+    # def get_object(self):
+    #     post = get_object_or_404(
+    #         Post.objects.select_related(
+    #             'category',
+    #             'location',
+    #         ),
+    #         pk=self.kwargs['post_id'],
+    #         author=self.request.user
+    #     )
+    #     return post
+    # #
+    # def post(self, request, *args, **kwargs):
+    #     post = get_object_or_404(
+    #         Post.objects.select_related(
+    #             'category',
+    #             'location',
+    #         ),
+    #         pk=self.kwargs['post_id'],
+    #     )
+    #     if post.author != self.request.user:
+    #         raise Http404
+    #     return super(PostUpdateView, self).post(request, *args, **kwargs)
 
 
 class PostDeleteView(LoginRequiredMixin, DeleteView):
