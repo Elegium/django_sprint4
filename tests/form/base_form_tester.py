@@ -586,3 +586,4 @@ class AnonymousSubmitTester(SubmitTester):
             by_user=by_user or "неаутентифицированным пользователем",
             redirect_to_page=redirect_to_page or "страницу аутентификации",
         )
+
