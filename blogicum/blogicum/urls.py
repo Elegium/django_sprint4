@@ -20,7 +20,7 @@ from django.views.generic.edit import CreateView
 from django.conf.urls.static import static
 from django.conf import settings
 
-# handler403 = 'pages.views.csrf_failure'
+handler403 = 'pages.views.csrf_failure'
 handler404 = 'pages.views.page_not_found'
 handler500 = 'pages.views.internal_server_error'
 

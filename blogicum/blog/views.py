@@ -33,7 +33,7 @@ class CustomSettingsCommentMixin:
             Post,
             id=kwargs['post_id']
         )
-        if not '/comment/' in request.path:
+        if not ('/comment/') in request.path:
             get_object_or_404(Comment,
                               id=kwargs['comment_id'],
                               author=request.user)
@@ -149,8 +149,8 @@ class CategoryDetailView(DetailView):
     template_name = 'blog/category.html'
     slug_url_kwarg = 'category_slug'
     queryset = Category.objects.filter(
-                is_published=True
-            )
+        is_published=True
+    )
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
