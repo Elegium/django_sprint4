@@ -54,7 +54,11 @@ class PostListView(ListView):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        comment_count = Post.objects.annotate(comments_count=Count('comments')).all()
+        comment_count = Post.objects.annotate(
+            comments_count=Count(
+                'comments'
+            )
+        ).all()
         context['comment_count'] = comment_count
         return context
 
@@ -222,32 +226,28 @@ class CommentDeleteView(
     """
 
 
-class ProfileDetailView(DetailView):
-    current_user = None
-    model = User
+class ProfileListView(ListView):
+    model = Post
     template_name = 'blog/profile.html'
+    paginate_by = 10
 
-    def get_object(self):
-        self.current_user = get_object_or_404(
+    def get_queryset(self):
+        return super(
+            ProfileListView, self
+        ).get_queryset().filter(
+            author__username=self.kwargs.get(
+                'username'
+            )
+        )
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = get_object_or_404(
             User, username=self.kwargs.get(
                 'username'
             )
         )
-        return self.current_user
-
-    def get_context_data(self, *, object_list=None, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        queryset = self.current_user.posts.all(
-
-        ).order_by(
-            '-pub_date'
-        )
-        paginator = Paginator(queryset, 10)
-        page = self.request.GET.get('page')
-        postss = paginator.get_page(page)
-        context['page_obj'] = postss
-        context['profile'] = self.current_user
+        context['profile'] = user
         return context
 
 

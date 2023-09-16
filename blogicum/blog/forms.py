@@ -8,7 +8,11 @@ class PostForm(forms.ModelForm):
         model = Post
         exclude = ('author', 'is_published',)
         widgets = {
-            'pub_date': forms.DateTimeInput(format=('%d-%m-%Y'), attrs={'type': 'date'})
+            'pub_date': forms.DateTimeInput(
+                format=(
+                    '%d-%m-%Y'
+                ), attrs={'type': 'date'}
+            )
         }
 
     def clean(self):
