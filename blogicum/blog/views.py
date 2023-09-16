@@ -205,8 +205,6 @@ class CommentUpdateView(
 ):
     form_class = CommentForm
 
-    # pk_url_kwarg = 'comment_id'
-
     def form_valid(self, form):
         post = get_object_or_404(
             Post,
