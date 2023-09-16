@@ -9,40 +9,34 @@ from django.views.generic import (
     DeleteView
 )
 from django.urls import reverse_lazy, reverse
-from .models import Post, Category, Comment
+from .models import Post, Category, Comment, User
 from .forms import PostForm, UserForm, CommentForm
-from django.contrib.auth import get_user_model
 from .utils import object_filter
 from django.core.paginator import Paginator
+from django.db.models import Count
 
 NOW_DATE = dt.datetime.now().date()
 
-User = get_user_model()
-
 
 class CustomSettingsCommentMixin:
-    current_post = None
     model = Comment
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect(
                 'blog:post_detail', self.kwargs['post_id']
             )
-        self.current_post = get_object_or_404(
-            Post,
-            id=kwargs['post_id']
-        )
-        if not ('/comment/') in request.path:
-            get_object_or_404(Comment,
-                              id=kwargs['comment_id'],
-                              author=request.user)
+        get_object_or_404(Comment,
+                          id=kwargs['comment_id'],
+                          author=request.user)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         return reverse(
             'blog:post_detail', kwargs={
-                'post_id': self.current_post.id
+                'post_id': self.kwargs['post_id']
             }
         )
 
@@ -56,8 +50,13 @@ class PostListView(ListView):
             'category',
             'location'
         )
-    ).order_by(
-        '-pub_date')
+    )
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        comment_count = Post.objects.annotate(comments_count=Count('comments')).all()
+        context['comment_count'] = comment_count
+        return context
 
 
 class PostDetailView(DetailView):
@@ -129,7 +128,6 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     def dispatch(self, request, *args, **kwargs):
         if not self.request.user.is_authenticated:
             return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
-
         post = get_object_or_404(
             Post.objects.select_related(
                 'category',
@@ -167,17 +165,33 @@ class CategoryDetailView(DetailView):
         return context
 
 
-class CommentCreateView(
-    CustomSettingsCommentMixin,
-    LoginRequiredMixin,
-    CreateView
-):
+class CommentCreateView(LoginRequiredMixin, CreateView):
+    current_post = None
+    model = Comment
     form_class = CommentForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(
+                'blog:post_detail', self.kwargs['post_id']
+            )
+        self.current_post = get_object_or_404(
+            Post,
+            id=kwargs['post_id']
+        )
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.author = self.request.user
         form.instance.post = self.current_post
         return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse(
+            'blog:post_detail', kwargs={
+                'post_id': self.current_post.id
+            }
+        )
 
 
 class CommentUpdateView(
@@ -186,11 +200,15 @@ class CommentUpdateView(
     UpdateView
 ):
     form_class = CommentForm
-    template_name = 'blog/comment.html'
-    pk_url_kwarg = 'comment_id'
+
+    # pk_url_kwarg = 'comment_id'
 
     def form_valid(self, form):
-        form.instance.post = self.current_post
+        post = get_object_or_404(
+            Post,
+            id=self.kwargs['post_id']
+        )
+        form.instance.post = post
         return super().form_valid(form)
 
 
@@ -199,8 +217,9 @@ class CommentDeleteView(
     LoginRequiredMixin,
     DeleteView
 ):
-    template_name = 'blog/comment.html'
-    pk_url_kwarg = 'comment_id'
+    """
+    Класс использует миксины.
+    """
 
 
 class ProfileDetailView(DetailView):

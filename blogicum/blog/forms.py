@@ -1,9 +1,6 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from .models import Post, Comment
-
-User = get_user_model()
+from .models import Post, Comment, User
 
 
 class PostForm(forms.ModelForm):
@@ -11,7 +8,7 @@ class PostForm(forms.ModelForm):
         model = Post
         exclude = ('author', 'is_published',)
         widgets = {
-            'pub_date': forms.DateInput(attrs={'type': 'date'})
+            'pub_date': forms.DateTimeInput(format=('%d-%m-%Y'), attrs={'type': 'date'})
         }
 
     def clean(self):

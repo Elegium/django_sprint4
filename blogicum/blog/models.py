@@ -77,6 +77,7 @@ class Post(PublishedDatecreatedBaseModel):
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
+        ordering = ['-pub_date']
 
     def get_absolute_url(self):
         return reverse("blog:post_detail", kwargs={"post_id": self.pk})
@@ -84,7 +85,6 @@ class Post(PublishedDatecreatedBaseModel):
     def __str__(self):
         return self.title
 
-    @property
     def comment_count(self):
         return self.comments.count()
 
