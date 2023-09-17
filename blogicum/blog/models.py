@@ -86,7 +86,6 @@ class Post(PublishedDatecreatedBaseModel):
         return self.title
 
 
-
 class Comment(models.Model):
     text = models.TextField('Комментарий')
     post = models.ForeignKey(
@@ -99,4 +98,3 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ('create_at',)
-

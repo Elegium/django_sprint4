@@ -11,8 +11,6 @@ from django.views.generic import (
 from django.urls import reverse_lazy, reverse
 from .models import Post, Category, Comment, User
 from .forms import PostForm, UserForm, CommentForm
-from .utils import object_filter
-from django.core.paginator import Paginator
 from django.db.models import Count
 
 
@@ -54,6 +52,10 @@ class PostListView(ListView):
             pub_date__lte=dt.datetime.now(),
             is_published=True,
             category__is_published=True
+        ).select_related(
+            'category',
+            'location',
+            'author'
         ).annotate(
             comment_count=Count(
                 'comments'
@@ -140,27 +142,39 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class CategoryDetailView(DetailView):
-    current_category = None
-    model = Category
+class CategoryListView(ListView):
+    model = Post
     template_name = 'blog/category.html'
     slug_url_kwarg = 'category_slug'
-    queryset = Category.objects.filter(
-        is_published=True
-    )
+    ordering = ['-pub_date']
+    paginate_by = 10
+
+    def get_queryset(self):
+        return super(
+            CategoryListView, self
+        ).get_queryset().filter(
+            category__slug=self.kwargs.get(
+                'category_slug'
+            ), is_published=True,
+            pub_date__lte=dt.datetime.now().date()
+        ).select_related(
+            'category',
+            'location',
+            'author'
+        ).annotate(
+            comment_count=Count(
+                'comments'
+            )
+        )
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
-        queryset = object_filter(
-            self.object.posts.all().order_by(
-                '-pub_date'
-            )
+        category = get_object_or_404(
+            Category, slug=self.kwargs.get(
+                'category_slug'
+            ), is_published=True
         )
-        paginator = Paginator(queryset, 10)
-        page = self.request.GET.get('page')
-        page_obj = paginator.get_page(page)
-        context['category'] = self.current_category
-        context['page_obj'] = page_obj
+        context['category'] = category
         return context
 
 
@@ -206,6 +220,10 @@ class ProfileListView(ListView):
             author__username=self.kwargs.get(
                 'username'
             )
+        ).select_related(
+            'category',
+            'location',
+            'author'
         ).annotate(
             comment_count=Count(
                 'comments'
