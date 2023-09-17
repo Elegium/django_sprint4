@@ -85,8 +85,6 @@ class Post(PublishedDatecreatedBaseModel):
     def __str__(self):
         return self.title
 
-    def comment_count(self):
-        return self.comments.count()
 
 
 class Comment(models.Model):
@@ -101,3 +99,4 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ('create_at',)
+
