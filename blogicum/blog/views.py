@@ -28,7 +28,6 @@ class CustomSettingsCommentMixin(LoginRequiredMixin):
             return redirect(
                 'blog:post_detail', self.kwargs['post_id']
             )
-            raise Http404
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -156,7 +155,8 @@ class CategoryListView(ListView):
             category__slug=self.kwargs.get(
                 'category_slug'
             ), is_published=True,
-            pub_date__lte=dt.datetime.now().date()
+            pub_date__lte=dt.datetime.now().date(),
+            category__is_published=True
         ).select_related(
             'category',
             'location',
