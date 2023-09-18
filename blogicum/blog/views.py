@@ -13,6 +13,8 @@ from .models import Post, Category, Comment, User
 from .forms import PostForm, UserForm, CommentForm
 from django.db.models import Count
 
+NUMBER_OF_RECORDS = 10
+
 
 class CustomSettingsCommentMixin(LoginRequiredMixin):
     model = Comment
@@ -42,7 +44,7 @@ class PostListView(ListView):
     model = Post
     template_name = 'blog/index.html'
     ordering = ['-pub_date']
-    paginate_by = 10
+    paginate_by = NUMBER_OF_RECORDS
 
     def get_queryset(self):
         return super(
@@ -146,7 +148,7 @@ class CategoryListView(ListView):
     template_name = 'blog/category.html'
     slug_url_kwarg = 'category_slug'
     ordering = ['-pub_date']
-    paginate_by = 10
+    paginate_by = NUMBER_OF_RECORDS
 
     def get_queryset(self):
         return super(
@@ -211,7 +213,7 @@ class ProfileListView(ListView):
     model = Post
     template_name = 'blog/profile.html'
     ordering = ['-pub_date']
-    paginate_by = 10
+    paginate_by = NUMBER_OF_RECORDS
 
     def get_queryset(self):
         return super(
